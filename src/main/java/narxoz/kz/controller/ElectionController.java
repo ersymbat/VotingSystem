@@ -1,4 +1,5 @@
 package narxoz.kz.controller;
+import jakarta.transaction.Transactional;
 import narxoz.kz.auth.UserRepository;
 import narxoz.kz.auth.Users;
 import narxoz.kz.dto.CandidateWithVotesDTO;
@@ -10,6 +11,8 @@ import narxoz.kz.repository.ElectionRepository;
 import narxoz.kz.repository.VoteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -17,6 +20,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +38,8 @@ public class ElectionController {
    private ElectionRepository electionRepository;
     @Autowired
     private CandidateRepository candidateRepository;
+    @Autowired
+    private JavaMailSender javaMailSender;
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/add-election")
     public String openAddElection(Model model){
@@ -57,16 +63,52 @@ public class ElectionController {
        updElection.setStartDate(startDate);
        updElection.setEndDate(endDate);
        electionRepository.save(updElection);
+        StringBuilder report = new StringBuilder();
+        report.append("Добавлены новые выборы!\n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+updElection.getTitle() +" \n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+updElection.getDescription() +" \n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+updElection.getStartDate() +" \n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+updElection.getEndDate() +" \n");
+
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo("yersymbat.sagatbekov@narxoz.kz");
+        message.setSubject("Новые выборы! " +LocalDate.now());
+        message.setText(report.toString());
+
+        javaMailSender.send(message);
         return "redirect:home";
     }
     @GetMapping("/add-candidate")
     public String openAddCandidate(Model model){
         model.addAttribute("candidate", new Candidate());
        return "add-candidate";
+
     }
     @PostMapping("/add")
     public String saveCandidate(@ModelAttribute Candidate candidate) {
         candidateRepository.save(candidate);
+        StringBuilder report = new StringBuilder();
+        report.append("Добавлен новый кандидат!\n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+candidate.getName() +" \n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+candidate.getDescription() +" \n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+candidate.getVoteCount() +" \n");
+        report.append("──────────────────────────────\n\n");
+
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo("yersymbat.sagatbekov@narxoz.kz");
+        message.setSubject("Новый кандидат! " +LocalDate.now());
+        message.setText(report.toString());
+
+        javaMailSender.send(message);
         return "redirect:/election/home";
     }
     @PreAuthorize("isAuthenticated()")
@@ -88,7 +130,9 @@ public class ElectionController {
         }
 
         model.addAttribute("elections", elections);
-        return "/home";
+
+
+        return "home";
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -118,10 +162,27 @@ public class ElectionController {
 
         return "details";
     }
-
+    @Transactional
     @PostMapping("/deleteElection")
     public String deleteElection(@RequestParam("id") Long id){
-       electionRepository.deleteById(id);
+        StringBuilder report = new StringBuilder();
+        report.append("Удалены выборы!\n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+electionRepository.findAllById(id).getTitle() +" \n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+electionRepository.findAllById(id).getDescription() +" \n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+electionRepository.findAllById(id).getStartDate() +" \n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n"+electionRepository.findAllById(id).getEndDate() +" \n");
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo("yersymbat.sagatbekov@narxoz.kz");
+        message.setSubject("Удалены выборы! " +LocalDate.now());
+        message.setText(report.toString());
+
+        javaMailSender.send(message);
+        electionRepository.deleteById(id);
         return "redirect:/election/home";
     }
 
@@ -158,6 +219,17 @@ public class ElectionController {
         String hashedPassword = passwordEncoder.encode(rawPassword);
         user.setPassword(hashedPassword);
         userRepository.save(user);
+        StringBuilder report = new StringBuilder();
+        report.append("Рады видеть вас на нашей платформе!\n");
+        report.append("──────────────────────────────\n\n");
+        report.append("\n📅 Спасибо за регистрацию. Хорошего дня!\n");
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(user.getEmail());
+        message.setSubject("Благодарим вас!");
+        message.setText(report.toString());
+
+        javaMailSender.send(message);
         return "redirect:/election/login";
     }
 
